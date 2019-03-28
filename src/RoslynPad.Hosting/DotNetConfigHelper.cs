@@ -27,14 +27,12 @@ namespace RoslynPad.Hosting
                     new JProperty("additionalProbingPaths", new JArray(packageFolder)))));
         }
 
-        public static XDocument CreateNetFxAppConfig(IList<string> references)
+        public static XDocument CreateNetFxAppConfig(IList<string> references, string encodingName)
         {
             var runtime = new XElement("runtime");
 
-            foreach (var file in references)
-            {
-                using (var assembly = AssemblyDefinition.ReadAssembly(file))
-                {
+            foreach (var file in references) {
+                using (var assembly = AssemblyDefinition.ReadAssembly(file)) {
                     var publicKeyToken = assembly.Name.PublicKeyToken;
                     var publicKeyTokenString = publicKeyToken == null || publicKeyToken.Length == 0
                         ? string.Empty
@@ -54,8 +52,14 @@ namespace RoslynPad.Hosting
                 }
             }
 
+            var appSettings = new XElement("appSettings");
+            appSettings.Add(new XElement("add",
+                new XAttribute("key", "Encdoing"),
+                new XAttribute("value", encodingName)));
+
             return new XDocument(
                 new XElement("configuration",
+                    new XElement(appSettings),
                     new XElement(runtime)));
         }
     }

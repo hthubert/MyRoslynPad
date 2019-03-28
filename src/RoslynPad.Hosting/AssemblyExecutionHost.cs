@@ -29,10 +29,12 @@ namespace RoslynPad.Hosting
     /// </summary>
     internal class AssemblyExecutionHost : IExecutionHost
     {
+        private static string _scriptRunnerName = "ScriptRunner.exe";
+
         private static readonly CSharpParseOptions _parseOptions = new CSharpParseOptions(preprocessorSymbols: new[] { "__DEMO__", "__DEMO_EXPERIMENTAL__" }, languageVersion: LanguageVersion.Latest, kind: SourceCodeKind.Script);
 
-        private static readonly SyntaxTree InitHostSyntax = ParseSyntaxTree(
-            @"RoslynPad.Runtime.RuntimeInitializer.Initialize();", _parseOptions);
+        //private static readonly SyntaxTree InitHostSyntax = ParseSyntaxTree(
+        //    @"RoslynPad.Runtime.RuntimeInitializer.Initialize();", _parseOptions);
 
         private static Lazy<string> CurrentPid { get; } = new Lazy<string>(() => Process.GetCurrentProcess().Id.ToString());
 
@@ -220,11 +222,13 @@ namespace RoslynPad.Hosting
             }
         }
 
-        private string AssemblyExtension => Platform.IsCore ? "dll" : "exe";
+        private static string AssemblyExtension => "dll";
 
         private void CopyDependencies()
         {
             var referencesChanged = CopyReferences(_parameters.DirectReferences);
+
+            CopyIfNewer(_scriptRunnerName, Path.Combine(BuildPath, _scriptRunnerName));
 
             if (Platform.IsCore) {
                 File.Copy(Path.Combine(BuildPath, "nuget", "project.assets.json"), _depsFile, overwrite: true);
@@ -256,8 +260,10 @@ namespace RoslynPad.Hosting
 
             void CreateAppConfig()
             {
-                var appConfig = DotNetConfigHelper.CreateNetFxAppConfig(_parameters.NuGetRuntimeReferences);
-                appConfig.Save(Path.ChangeExtension(_assemblyPath, ".exe.config"));
+                var appConfig = DotNetConfigHelper.CreateNetFxAppConfig(
+                    _parameters.NuGetRuntimeReferences, 
+                    _parameters.ConsoleEncoding.HeaderName);
+                appConfig.Save(Path.ChangeExtension(Path.Combine(BuildPath, _scriptRunnerName), ".exe.config"));
             }
         }
 
@@ -276,23 +282,24 @@ namespace RoslynPad.Hosting
 
         private ScriptRunner CreateScriptRunner(string code, OptimizationLevel? optimizationLevel)
         {
-            Platform platform = Platform.Architecture == Architecture.X86
+            var platform = Platform.Architecture == Architecture.X86
                 ? Microsoft.CodeAnalysis.Platform.AnyCpu32BitPreferred
                 : Microsoft.CodeAnalysis.Platform.AnyCpu;
 
-            return new ScriptRunner(code: null,
-                                    syntaxTrees: ImmutableList.Create(InitHostSyntax, ParseCode(code)),
-                                    _parseOptions,
-                                    OutputKind.ConsoleApplication,
-                                    platform,
-                                    _scriptOptions.MetadataReferences,
-                                    _scriptOptions.Imports,
-                                    _scriptOptions.FilePath,
-                                    _parameters.WorkingDirectory,
-                                    _scriptOptions.MetadataResolver,
-                                    optimizationLevel: optimizationLevel ?? _parameters.OptimizationLevel,
-                                    checkOverflow: _parameters.CheckOverflow,
-                                    allowUnsafe: _parameters.AllowUnsafe);
+            return new ScriptRunner(
+                code: null,
+                syntaxTrees: ImmutableList.Create(ParseCode(code)),
+                _parseOptions,
+                OutputKind.DynamicallyLinkedLibrary,
+                platform,
+                _scriptOptions.MetadataReferences,
+                _scriptOptions.Imports,
+                _scriptOptions.FilePath,
+                _parameters.WorkingDirectory,
+                _scriptOptions.MetadataResolver,
+                optimizationLevel: optimizationLevel ?? _parameters.OptimizationLevel,
+                checkOverflow: _parameters.CheckOverflow,
+                allowUnsafe: _parameters.AllowUnsafe);
         }
 
         private async Task RunProcess(string assemblyPath, CancellationToken cancellationToken)
@@ -329,8 +336,8 @@ namespace RoslynPad.Hosting
         private ProcessStartInfo GetProcessStartInfo(string assemblyPath)
         {
             return new ProcessStartInfo {
-                FileName = Platform.IsCore ? Platform.HostPath : assemblyPath,
-                Arguments = $"\"{assemblyPath}\" --pid {CurrentPid.Value}",
+                FileName = Path.Combine(BuildPath, _scriptRunnerName),
+                Arguments = $"\"{Path.GetFileName(assemblyPath)}\" --pid {CurrentPid.Value}",
                 WorkingDirectory = _parameters.WorkingDirectory,
                 CreateNoWindow = true,
                 UseShellExecute = false,

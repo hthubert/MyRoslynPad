@@ -6,6 +6,7 @@ using System.Composition;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -283,7 +284,8 @@ namespace RoslynPad.UI
                 roslynHost.DefaultImports,
                 roslynHost.DisabledDiagnostics,
                 WorkingDirectory,
-                MainViewModel.NuGet.GlobalPackageFolder);
+                MainViewModel.NuGet.GlobalPackageFolder,
+                consoleEncoding: MainViewModel.Settings.EnableGbk ? Encoding.GetEncoding("gbk") : null);
             _executionHost = new AssemblyExecutionHost(_executionHostParameters, BuildPath, Document?.Name ?? "Untitled");
 
             _executionHost.Dumped += ExecutionHostOnDump;

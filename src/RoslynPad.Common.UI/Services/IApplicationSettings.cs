@@ -25,6 +25,7 @@ namespace RoslynPad.UI
         int LiveModeDelayMs { get; set; }
         bool SearchWhileTyping { get; set; }
         string DefaultPlatformName { get; set; }
+        bool EnableGbk { get; set; }
     }
 
     [Export(typeof(IApplicationSettings)), Shared]
@@ -50,6 +51,7 @@ namespace RoslynPad.UI
         private bool _searchWhileTyping;
         private bool _enableBraceCompletion = true;
         private string _defaultPlatformName;
+        private bool _enableGbk;
 
         [ImportingConstructor]
         public ApplicationSettings(ITelemetryProvider telemetryProvider)
@@ -151,31 +153,32 @@ namespace RoslynPad.UI
             set => SetProperty(ref _defaultPlatformName, value);
         }
 
+        public bool EnableGbk
+        {
+            get => _enableGbk;
+            set => SetProperty(ref _enableGbk, value);
+        }
+
         protected override void OnPropertyChanged(string propertyName = null)
         {
             base.OnPropertyChanged(propertyName);
-
             SaveSettings();
         }
 
         private void LoadSettings(string path)
         {
-            if (!File.Exists(path))
-            {
+            if (!File.Exists(path)) {
                 LoadDefaultSettings();
                 return;
             }
 
-            try
-            {
+            try {
                 var serializer = new JsonSerializer { NullValueHandling = NullValueHandling.Ignore };
-                using (var reader = File.OpenText(path))
-                {
+                using (var reader = File.OpenText(path)) {
                     serializer.Populate(reader, this);
                 }
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 LoadDefaultSettings();
                 _telemetryProvider.ReportError(e);
             }
@@ -192,16 +195,13 @@ namespace RoslynPad.UI
         {
             if (_path == null) return;
 
-            try
-            {
+            try {
                 var serializer = new JsonSerializer { Formatting = Formatting.Indented };
-                using (var writer = File.CreateText(_path))
-                {
+                using (var writer = File.CreateText(_path)) {
                     serializer.Serialize(writer, this);
                 }
             }
-            catch (Exception e)
-            {
+            catch (Exception e) {
                 _telemetryProvider.ReportError(e);
             }
         }

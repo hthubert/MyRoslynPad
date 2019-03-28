@@ -127,7 +127,12 @@
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
                             Margin="5">
-
+                    <ToggleButton Margin="20 0 0 0"
+                                  BorderThickness="0"
+                                  ToolTip="如果程序输出为乱码可以在启用后，重新打开文件"
+                                  IsChecked="{Binding Settings.EnableGbk}">
+                        <TextBlock>启用GBK</TextBlock>
+                    </ToggleButton>
                     <ToggleButton Margin="20 0 0 0"
                                   BorderThickness="0"
                                   Background="Transparent"
@@ -138,7 +143,6 @@
                                Width="16"
                                Height="16" />
                     </ToggleButton>
-
                     <ToggleButton Margin="20 0 0 0"
                                   BorderThickness="0"
                                   Background="Transparent"

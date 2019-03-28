@@ -1,9 +1,9 @@
-﻿using RoslynPad.Utilities;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
+using RoslynPad.Utilities;
 
 namespace RoslynPad.Runtime
 {
@@ -14,13 +14,14 @@ namespace RoslynPad.Runtime
     public static class RuntimeInitializer
     {
         private static bool _initialized;
+        private static Encoding _encoding;
 
         [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
-        public static void Initialize()
+        public static void Initialize(Encoding encoding = null)
         {
             if (_initialized) return;
             _initialized = true;
-
+            _encoding = encoding ?? Encoding.UTF8;
             var isAttachedToParent = TryAttachToParentProcess();
             DisableWer();
             AttachConsole(isAttachedToParent);
@@ -28,19 +29,17 @@ namespace RoslynPad.Runtime
 
         private static void AttachConsole(bool isAttachedToParent)
         {
-            Console.OutputEncoding = Encoding.UTF8;
-            Console.InputEncoding = Encoding.UTF8;
+            Console.OutputEncoding = _encoding;
+            Console.InputEncoding = _encoding;
 
             var consoleDumper = isAttachedToParent ? (IConsoleDumper)new JsonConsoleDumper() : new DirectConsoleDumper();
 
-            if (consoleDumper.SupportsRedirect)
-            {
+            if (consoleDumper.SupportsRedirect) {
                 Console.SetOut(consoleDumper.CreateWriter());
                 Console.SetError(consoleDumper.CreateWriter("Error"));
                 Console.SetIn(consoleDumper.CreateReader());
 
-                AppDomain.CurrentDomain.UnhandledException += (o, e) =>
-                {
+                AppDomain.CurrentDomain.UnhandledException += (o, e) => {
                     consoleDumper.DumpException((Exception)e.ExceptionObject);
                     Environment.Exit(1);
                 };
@@ -52,8 +51,7 @@ namespace RoslynPad.Runtime
 
         private static bool TryAttachToParentProcess()
         {
-            if (ParseCommandLine("pid", @"\d+", out var parentProcessId))
-            {
+            if (ParseCommandLine("pid", @"\d+", out var parentProcessId)) {
                 AttachToParentProcess(int.Parse(parentProcessId));
 
                 return true;
@@ -65,24 +63,20 @@ namespace RoslynPad.Runtime
         internal static void AttachToParentProcess(int parentProcessId)
         {
             Process clientProcess;
-            try
-            {
+            try {
                 clientProcess = Process.GetProcessById(parentProcessId);
             }
-            catch (ArgumentException)
-            {
+            catch (ArgumentException) {
                 Environment.Exit(1);
                 return;
             }
 
             clientProcess.EnableRaisingEvents = true;
-            clientProcess.Exited += (o, e) =>
-            {
+            clientProcess.Exited += (o, e) => {
                 Environment.Exit(1);
             };
 
-            if (!clientProcess.IsAlive())
-            {
+            if (!clientProcess.IsAlive()) {
                 Environment.Exit(1);
             }
         }
@@ -92,8 +86,7 @@ namespace RoslynPad.Runtime
         /// </summary>
         internal static void DisableWer()
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
                 WindowsNativeMethods.DisableWer();
             }
         }

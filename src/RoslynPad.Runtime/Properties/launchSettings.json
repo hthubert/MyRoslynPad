@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "RoslynPad.Runtime": {
+      "commandName": "Project"
+    }
+  }
+}
