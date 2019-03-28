@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\build\common.props" />
+  <PropertyGroup>
+    <RootNamespace>RoslynPad.Editor</RootNamespace>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <DefineConstants>$(DefineConstants);AVALONIA</DefineConstants>
+    <Version>$(EditorPackageVersion)</Version>
+    <Description>Provides a Roslyn-based code editor using AvaloniaEdit (Avalonia platform) with completion, diagnostics, and quick actions</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="**\*.xaml" Subtype="Designer" Exclude="obj\**" />
+    <Compile Include="..\RoslynPad.Common\Utilities\ReflectionUtil.cs" Link="ReflectionUtil.cs" />
+    <Compile Update="**\*.xaml.cs" SubType="Code" DependentUpon="%(Filename)" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="0.7.0" />
+    <PackageReference Include="Avalonia.AvaloniaEdit" Version="0.7.0" />
+    <PackageReference Include="System.Reactive.Linq" Version="4.1.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RoslynPad.Roslyn.Avalonia\RoslynPad.Roslyn.Avalonia.csproj" />
+    <ProjectReference Include="..\RoslynPad.Roslyn\RoslynPad.Roslyn.csproj" />
+  </ItemGroup>
+  <Import Project="..\RoslynPad.Editor.Shared\RoslynPad.Editor.Shared.projitems" Label="Shared" />
+</Project>
