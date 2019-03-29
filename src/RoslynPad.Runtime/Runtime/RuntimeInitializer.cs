@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -7,6 +8,26 @@ using RoslynPad.Utilities;
 
 namespace RoslynPad.Runtime
 {
+    public abstract class ScriptInitializer
+    {
+        public static string GlobalPackageFolder { get; set; }
+
+        public abstract void Do();
+
+        public static void CopyDir(string source, string dest)
+        {
+            Directory.CreateDirectory(dest);
+            foreach (var path in Directory.GetDirectories(source, "*",
+                SearchOption.AllDirectories))
+                Directory.CreateDirectory(path.Replace(source, dest));
+
+            //Copy all the files & Replaces any files with the same name
+            foreach (var fileName in Directory.GetFiles(source, "*.*",
+                SearchOption.AllDirectories))
+                File.Copy(fileName, fileName.Replace(source, dest), true);
+        }
+    }
+
     /// <summary>
     /// This class initializes the RoslynPad standalone host.
     /// </summary>
@@ -22,6 +43,9 @@ namespace RoslynPad.Runtime
             if (_initialized) return;
             _initialized = true;
             _encoding = encoding ?? Encoding.UTF8;
+            ParseCommandLine("nugetRoot", "[^\"]+", out var path);
+            ScriptInitializer.GlobalPackageFolder = path;
+
             var isAttachedToParent = TryAttachToParentProcess();
             DisableWer();
             AttachConsole(isAttachedToParent);
@@ -32,7 +56,7 @@ namespace RoslynPad.Runtime
             Console.OutputEncoding = _encoding;
             Console.InputEncoding = _encoding;
 
-            var consoleDumper = isAttachedToParent ? (IConsoleDumper)new JsonConsoleDumper() : new DirectConsoleDumper();
+            var consoleDumper = isAttachedToParent ? (IConsoleDumper)new JsonConsoleDumper(_encoding) : new DirectConsoleDumper();
 
             if (consoleDumper.SupportsRedirect) {
                 Console.SetOut(consoleDumper.CreateWriter());
@@ -53,10 +77,8 @@ namespace RoslynPad.Runtime
         {
             if (ParseCommandLine("pid", @"\d+", out var parentProcessId)) {
                 AttachToParentProcess(int.Parse(parentProcessId));
-
                 return true;
             }
-
             return false;
         }
 
@@ -93,7 +115,7 @@ namespace RoslynPad.Runtime
 
         private static bool ParseCommandLine(string name, string pattern, out string value)
         {
-            var match = Regex.Match(Environment.CommandLine, $@"--{name}\s+""?({pattern})");
+            var match = Regex.Match(Environment.CommandLine, $@"--{name}\s+""?({pattern})""?");
             value = match.Success ? match.Groups[1].Value : string.Empty;
             return match.Success;
         }

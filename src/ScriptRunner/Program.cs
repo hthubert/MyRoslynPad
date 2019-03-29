@@ -36,29 +36,43 @@ namespace ScriptRunner
             return null;
         }
 
+        static void DoInit(Assembly asm)
+        {
+            var type = asm.GetTypes().SingleOrDefault(n => n.BaseType == typeof(ScriptInitializer));
+            if (type != null) {
+                ((ScriptInitializer)Activator.CreateInstance(type)).Do();
+            }
+        }
+
         static void Main(string[] args)
         {
             RuntimeInitializer.Initialize(_encoding);
             if (args.Length > 0) {
                 var asm = Assembly.LoadFile(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, args[0]));
-                var type = asm.GetTypes().SingleOrDefault(n => n.Name == "Program");
-                if (type != null) {
-                    _resolvePath = type
-                        .GetFields(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.FlattenHierarchy)
-                        .SingleOrDefault(fi => fi.IsLiteral && !fi.IsInitOnly && fi.Name == "ResolvePath")
-                        ?.GetRawConstantValue()
-                        .ToString();
+                DoInit(asm);
+                DoMain(asm);
+            }
+        }
 
-                    var main = type
-                        .GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)
-                        .SingleOrDefault(n => n.Name == "<Main>");
-                    if (main != null) {
-                        try {
-                            main.Invoke(null, new object[] { });
-                        }
-                        catch (TargetInvocationException e) {
-                            throw e.InnerException ?? e;
-                        }
+        private static void DoMain(Assembly asm)
+        {
+            var type = asm.GetTypes().SingleOrDefault(n => n.Name == "Program");
+            if (type != null) {
+                _resolvePath = type
+                    .GetFields(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+                    .SingleOrDefault(fi => fi.IsLiteral && !fi.IsInitOnly && fi.Name == "ResolvePath")
+                    ?.GetRawConstantValue()
+                    .ToString();
+
+                var main = type
+                    .GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static)
+                    .SingleOrDefault(n => n.Name == "<Main>");
+                if (main != null) {
+                    try {
+                        main.Invoke(null, new object[] { });
+                    }
+                    catch (TargetInvocationException e) {
+                        throw e.InnerException ?? e;
                     }
                 }
             }

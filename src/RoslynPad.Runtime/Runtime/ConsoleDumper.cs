@@ -28,18 +28,14 @@ namespace RoslynPad.Runtime
 
         public void Dump(DumpData data)
         {
-            try
-            {
+            try {
                 DumpResultObject(ResultObject.Create(data.Object, data.Quotas, data.Header));
             }
-            catch (Exception ex)
-            {
-                try
-                {
+            catch (Exception ex) {
+                try {
                     Console.WriteLine("Error during Dump: " + ex.Message);
                 }
-                catch
-                {
+                catch {
                     // ignore
                 }
             }
@@ -57,30 +53,25 @@ namespace RoslynPad.Runtime
 
         private void DumpResultObject(ResultObject resultObject, int indent = 0)
         {
-            if (indent > 0)
-            {
+            if (indent > 0) {
                 Console.Write("".PadLeft(indent));
             }
 
             Console.Write(resultObject.HasChildren ? "+ " : "  ");
 
-            if (resultObject.Header != null)
-            {
+            if (resultObject.Header != null) {
                 Console.Write($"[{resultObject.Header}]: ");
             }
 
             Console.WriteLine(resultObject.Value);
 
-            if (resultObject.Children != null)
-            {
-                foreach (var child in resultObject.Children)
-                {
+            if (resultObject.Children != null) {
+                foreach (var child in resultObject.Children) {
                     DumpResultObject(child, indent + 2);
                 }
             }
 
-            if (indent == 0)
-            {
+            if (indent == 0) {
                 Console.WriteLine();
             }
         }
@@ -92,6 +83,7 @@ namespace RoslynPad.Runtime
 
     internal class JsonConsoleDumper : IConsoleDumper, IDisposable
     {
+        private readonly Encoding _encoding;
         private const int MaxDumpsPerSession = 100000;
 
         private static readonly byte[] NewLine = Encoding.Default.GetBytes(Environment.NewLine);
@@ -100,12 +92,15 @@ namespace RoslynPad.Runtime
         private readonly string _inputReadRequestTypeName;
 
         private readonly Stream _stream;
+        private readonly MemoryStream _jsonStream;
 
         private int _dumpCount;
 
-        public JsonConsoleDumper()
+        public JsonConsoleDumper(Encoding encoding)
         {
+            _encoding = encoding;
             _stream = Console.OpenStandardOutput();
+            _jsonStream = new MemoryStream(1024 * 4);
 
             var assemblyName = typeof(ExceptionResultObject).Assembly.GetName().Name;
             _exceptionResultTypeName = $"{typeof(ExceptionResultObject).FullName}, {assemblyName}";
@@ -115,7 +110,7 @@ namespace RoslynPad.Runtime
         private XmlDictionaryWriter CreateJsonWriter()
         {
             // this assembly shouldn't have any external dependencies, so using this legacy JSON writer
-            return JsonReaderWriterFactory.CreateJsonWriter(_stream, Encoding.UTF8, ownsStream: false);
+            return JsonReaderWriterFactory.CreateJsonWriter(_jsonStream, Encoding.UTF8, ownsStream: false);
         }
 
         public bool SupportsRedirect => true;
@@ -133,27 +128,23 @@ namespace RoslynPad.Runtime
         public void Dispose()
         {
             _stream.Dispose();
+            _jsonStream.Dispose();
         }
 
         public void Dump(DumpData data)
         {
-            if (!CanDump())
-            {
+            if (!CanDump()) {
                 return;
             }
 
-            try
-            {
+            try {
                 DumpResultObject(ResultObject.Create(data.Object, data.Quotas, data.Header));
             }
-            catch (Exception ex)
-            {
-                try
-                {
+            catch (Exception ex) {
+                try {
                     DumpMessage("Error during Dump: " + ex.Message);
                 }
-                catch
-                {
+                catch {
                     // ignore
                 }
             }
@@ -161,23 +152,18 @@ namespace RoslynPad.Runtime
 
         public void DumpException(Exception exception)
         {
-            if (!CanDump())
-            {
+            if (!CanDump()) {
                 return;
             }
 
-            try
-            {
+            try {
                 DumpExceptionResultObject(ExceptionResultObject.Create(exception));
             }
-            catch (Exception ex)
-            {
-                try
-                {
+            catch (Exception ex) {
+                try {
                     DumpMessage("Error during Dump: " + ex.Message);
                 }
-                catch
-                {
+                catch {
                     // ignore
                 }
             }
@@ -191,10 +177,8 @@ namespace RoslynPad.Runtime
         private bool CanDump()
         {
             var currentCount = Interlocked.Increment(ref _dumpCount);
-            if (currentCount >= MaxDumpsPerSession)
-            {
-                if (currentCount == MaxDumpsPerSession)
-                {
+            if (currentCount >= MaxDumpsPerSession) {
+                if (currentCount == MaxDumpsPerSession) {
                     DumpMessage("<max results reached>");
                 }
 
@@ -206,41 +190,36 @@ namespace RoslynPad.Runtime
 
         private void DumpMessage(string message)
         {
-            using (var jsonWriter = CreateJsonWriter())
-            {
+            using (var jsonWriter = CreateJsonWriter()) {
                 jsonWriter.WriteStartElement("root", "");
                 jsonWriter.WriteAttributeString("type", "object");
                 jsonWriter.WriteElementString("v", message);
                 jsonWriter.WriteEndElement();
             }
-
+            DumpJsonData();
             DumpNewLine();
         }
 
         private void DumpInputReadRequest()
         {
-            try
-            {
-                using (var jsonWriter = CreateJsonWriter())
-                {
+            try {
+                using (var jsonWriter = CreateJsonWriter()) {
                     jsonWriter.WriteStartElement("root", "");
                     jsonWriter.WriteAttributeString("type", "object");
                     jsonWriter.WriteElementString("$type", _inputReadRequestTypeName);
                     jsonWriter.WriteEndElement();
                 }
-
+                DumpJsonData();
                 DumpNewLine();
             }
-            catch
-            {
+            catch {
                 // ignored
             }
         }
 
         private void DumpExceptionResultObject(ExceptionResultObject result)
         {
-            using (var jsonWriter = CreateJsonWriter())
-            {
+            using (var jsonWriter = CreateJsonWriter()) {
                 jsonWriter.WriteStartElement("root", "");
                 jsonWriter.WriteAttributeString("type", "object");
                 jsonWriter.WriteElementString("$type", _exceptionResultTypeName);
@@ -251,18 +230,28 @@ namespace RoslynPad.Runtime
                 WriteResultObjectContent(jsonWriter, result);
                 jsonWriter.WriteEndElement();
             }
-
+            DumpJsonData();
             DumpNewLine();
         }
 
         private void DumpResultObject(ResultObject result)
         {
-            using (var jsonWriter = CreateJsonWriter())
-            {
+            using (var jsonWriter = CreateJsonWriter()) {
                 WriteResultObject(jsonWriter, result, isRoot: true);
             }
 
+            DumpJsonData();
             DumpNewLine();
+        }
+
+        private void DumpJsonData()
+        {
+            var data = new byte[_jsonStream.Position];
+            _jsonStream.Seek(0, SeekOrigin.Begin);
+            _jsonStream.Read(data, 0, data.Length);
+            var bytes = _encoding.GetBytes(Encoding.UTF8.GetString(data));
+            _jsonStream.Seek(0, SeekOrigin.Begin);
+            _stream.Write(bytes, 0, bytes.Length);
         }
 
         private void DumpNewLine()
@@ -287,13 +276,11 @@ namespace RoslynPad.Runtime
             jsonWriter.WriteValue(result.IsExpanded);
             jsonWriter.WriteEndElement();
 
-            if (result.Children != null)
-            {
+            if (result.Children != null) {
                 jsonWriter.WriteStartElement("c");
                 jsonWriter.WriteAttributeString("type", "array");
 
-                foreach (var child in result.Children)
-                {
+                foreach (var child in result.Children) {
                     WriteResultObject(jsonWriter, child, isRoot: false);
                 }
 
@@ -319,8 +306,7 @@ namespace RoslynPad.Runtime
 
             public override void Write(string value)
             {
-                if (string.Equals(Environment.NewLine, value, StringComparison.Ordinal))
-                {
+                if (string.Equals(Environment.NewLine, value, StringComparison.Ordinal)) {
                     return;
                 }
 
@@ -329,15 +315,12 @@ namespace RoslynPad.Runtime
 
             public override void Write(char[] buffer, int index, int count)
             {
-                if (buffer != null)
-                {
-                    if (EndsWithNewLine(buffer, index, count))
-                    {
+                if (buffer != null) {
+                    if (EndsWithNewLine(buffer, index, count)) {
                         count -= Environment.NewLine.Length;
                     }
 
-                    if (count > 0)
-                    {
+                    if (count > 0) {
                         Dump(new string(buffer, index, count));
                     }
                 }
@@ -347,15 +330,12 @@ namespace RoslynPad.Runtime
             {
                 var nl = Environment.NewLine;
 
-                if (count < nl.Length)
-                {
+                if (count < nl.Length) {
                     return false;
                 }
 
-                for (int i = nl.Length; i >= 1; --i)
-                {
-                    if (buffer[index + count - i] != nl[nl.Length - i])
-                    {
+                for (int i = nl.Length; i >= 1; --i) {
+                    if (buffer[index + count - i] != nl[nl.Length - i]) {
                         return false;
                     }
                 }
@@ -390,8 +370,7 @@ namespace RoslynPad.Runtime
 
             public override int Read()
             {
-                if (_readString == null || _readPosition >= _readString.Length - 1)
-                {
+                if (_readString == null || _readPosition >= _readString.Length - 1) {
                     _dumper.DumpInputReadRequest();
 
                     _readString = _reader.ReadLine() + Environment.NewLine;
@@ -405,8 +384,7 @@ namespace RoslynPad.Runtime
             {
                 base.Dispose(disposing);
 
-                if (disposing)
-                {
+                if (disposing) {
                     _reader.Dispose();
                 }
             }

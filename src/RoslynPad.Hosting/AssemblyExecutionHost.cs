@@ -228,7 +228,7 @@ namespace RoslynPad.Hosting
         {
             var referencesChanged = CopyReferences(_parameters.DirectReferences);
 
-            CopyIfNewer(_scriptRunnerName, Path.Combine(BuildPath, _scriptRunnerName));
+            CopyIfNewer(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _scriptRunnerName), Path.Combine(BuildPath, _scriptRunnerName));
 
             if (Platform.IsCore) {
                 File.Copy(Path.Combine(BuildPath, "nuget", "project.assets.json"), _depsFile, overwrite: true);
@@ -337,7 +337,7 @@ namespace RoslynPad.Hosting
         {
             return new ProcessStartInfo {
                 FileName = Path.Combine(BuildPath, _scriptRunnerName),
-                Arguments = $"\"{Path.GetFileName(assemblyPath)}\" --pid {CurrentPid.Value}",
+                Arguments = $"\"{Path.GetFileName(assemblyPath)}\" --pid {CurrentPid.Value} --nugetRoot \"{_parameters.GlobalPackageFolder}\"",
                 WorkingDirectory = _parameters.WorkingDirectory,
                 CreateNoWindow = true,
                 UseShellExecute = false,
