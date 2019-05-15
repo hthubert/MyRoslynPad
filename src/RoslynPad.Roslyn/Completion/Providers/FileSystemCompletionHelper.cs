@@ -8,9 +8,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
-using Microsoft.CodeAnalysis.PooledObjects;
 using Microsoft.CodeAnalysis.Shared.Extensions;
 using Microsoft.CodeAnalysis.Shared.Utilities;
 using Roslyn.Utilities;
@@ -52,7 +52,7 @@ namespace RoslynPad.Roslyn
 
         // virtual for testing
         protected virtual string[] GetLogicalDrives()
-            => IOUtilities.PerformIO(CorLightup.Desktop.GetLogicalDrives, Array.Empty<string>());
+            => IOUtilities.PerformIO(Directory.GetLogicalDrives, Array.Empty<string>());
 
         // virtual for testing
         protected virtual bool DirectoryExists(string fullPath)
@@ -85,6 +85,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateNetworkRoot()
             => CommonCompletionItem.Create(
                 "\\\\",
+                "",
                 glyph: null,
                 description: "\\\\".ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -92,6 +93,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateUnixRoot()
             => CommonCompletionItem.Create(
                 "/",
+                "",
                 glyph: _folderGlyph,
                 description: "/".ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -99,6 +101,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateFileSystemEntryItem(string fullPath, bool isDirectory)
             => CommonCompletionItem.Create(
                 PathUtilities.GetFileName(fullPath),
+                "",
                 glyph: isDirectory ? _folderGlyph : _fileGlyph,
                 description: fullPath.ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -106,6 +109,7 @@ namespace RoslynPad.Roslyn
         private CompletionItem CreateLogicalDriveItem(string drive)
             => CommonCompletionItem.Create(
                 drive,
+                "",
                 glyph: _folderGlyph,
                 description: drive.ToSymbolDisplayParts(),
                 rules: _itemRules);
@@ -118,7 +122,8 @@ namespace RoslynPad.Roslyn
         // internal for testing
         internal ImmutableArray<CompletionItem> GetItems(string directoryPath, CancellationToken cancellationToken)
         {
-            if (!PathUtilities.IsUnixLikePlatform && directoryPath.Length == 1 && directoryPath[0] == '\\') {
+            if (!PathUtilities.IsUnixLikePlatform && directoryPath.Length == 1 && directoryPath[0] == '\\')
+            {
                 // The user has typed only "\".  In this case, we want to add "\\" to the list.  
                 return ImmutableArray.Create(CreateNetworkRoot());
             }
@@ -126,19 +131,24 @@ namespace RoslynPad.Roslyn
             var result = ArrayBuilder<CompletionItem>.GetInstance();
 
             var pathKind = PathUtilities.GetPathKind(directoryPath);
-            switch (pathKind) {
+            switch (pathKind)
+            {
                 case PathKind.Empty:
                     // base directory
-                    if (_baseDirectoryOpt != null) {
+                    if (_baseDirectoryOpt != null)
+                    {
                         result.AddRange(GetItemsInDirectory(_baseDirectoryOpt, cancellationToken));
                     }
 
                     // roots
-                    if (PathUtilities.IsUnixLikePlatform) {
+                    if (PathUtilities.IsUnixLikePlatform)
+                    {
                         result.AddRange(CreateUnixRoot());
                     }
-                    else {
-                        foreach (var drive in GetLogicalDrives()) {
+                    else
+                    {
+                        foreach (var drive in GetLogicalDrives())
+                        {
                             result.Add(CreateLogicalDriveItem(drive.TrimEnd(s_windowsDirectorySeparator)));
                         }
 
@@ -146,7 +156,8 @@ namespace RoslynPad.Roslyn
                     }
 
                     // entries on search paths
-                    foreach (var searchPath in _searchPaths) {
+                    foreach (var searchPath in _searchPaths)
+                    {
                         result.AddRange(GetItemsInDirectory(searchPath, cancellationToken));
                     }
 
@@ -157,10 +168,12 @@ namespace RoslynPad.Roslyn
                 case PathKind.RelativeToCurrentParent:
                 case PathKind.RelativeToCurrentRoot:
                     var fullDirectoryPath = FileUtilities.ResolveRelativePath(directoryPath, basePath: null, baseDirectory: _baseDirectoryOpt);
-                    if (fullDirectoryPath != null) {
+                    if (fullDirectoryPath != null)
+                    {
                         result.AddRange(GetItemsInDirectory(fullDirectoryPath, cancellationToken));
                     }
-                    else {
+                    else
+                    {
                         // invalid path
                         result.Clear();
                     }
@@ -170,12 +183,14 @@ namespace RoslynPad.Roslyn
                 case PathKind.Relative:
 
                     // base directory:
-                    if (_baseDirectoryOpt != null) {
+                    if (_baseDirectoryOpt != null)
+                    {
                         result.AddRange(GetItemsInDirectory(PathUtilities.CombineAbsoluteAndRelativePaths(_baseDirectoryOpt, directoryPath), cancellationToken));
                     }
 
                     // search paths:
-                    foreach (var searchPath in _searchPaths) {
+                    foreach (var searchPath in _searchPaths)
+                    {
                         result.AddRange(GetItemsInDirectory(PathUtilities.CombineAbsoluteAndRelativePaths(searchPath, directoryPath), cancellationToken));
                     }
 
@@ -184,7 +199,8 @@ namespace RoslynPad.Roslyn
                 case PathKind.RelativeToDriveDirectory:
                     // Paths "C:dir" are not supported, but when the path doesn't include any directory, i.e. "C:",
                     // we return the drive itself.
-                    if (directoryPath.Length == 2) {
+                    if (directoryPath.Length == 2)
+                    {
                         result.Add(CreateLogicalDriveItem(directoryPath));
                     }
 
@@ -203,31 +219,37 @@ namespace RoslynPad.Roslyn
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            if (!DirectoryExists(fullDirectoryPath)) {
+            if (!DirectoryExists(fullDirectoryPath))
+            {
                 yield break;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            foreach (var directory in EnumerateDirectories(fullDirectoryPath)) {
-                if (IsVisibleFileSystemEntry(directory)) {
+            foreach (var directory in EnumerateDirectories(fullDirectoryPath))
+            {
+                if (IsVisibleFileSystemEntry(directory))
+                {
                     yield return CreateFileSystemEntryItem(directory, isDirectory: true);
                 }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            foreach (var file in EnumerateFiles(fullDirectoryPath)) {
+            foreach (var file in EnumerateFiles(fullDirectoryPath))
+            {
                 if (_allowableExtensions.Length != 0 &&
                     !_allowableExtensions.Contains(
                         PathUtilities.GetExtension(file),
-                        PathUtilities.IsUnixLikePlatform ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase)) {
+                        PathUtilities.IsUnixLikePlatform ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase))
+                {
                     continue;
                 }
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (IsVisibleFileSystemEntry(file)) {
+                if (IsVisibleFileSystemEntry(file))
+                {
                     yield return CreateFileSystemEntryItem(file, isDirectory: false);
                 }
             }

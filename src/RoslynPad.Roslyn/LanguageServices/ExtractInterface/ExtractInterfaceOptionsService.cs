@@ -22,27 +22,6 @@ namespace RoslynPad.Roslyn.LanguageServices.ExtractInterface
             _dialogFactory = dialogFactory;
         }
 
-        public ExtractInterfaceOptionsResult GetExtractInterfaceOptions(
-            ISyntaxFactsService syntaxFactsService,
-            INotificationService notificationService,
-            List<ISymbol> extractableMembers,
-            string defaultInterfaceName,
-            List<string> allTypeNames,
-            string defaultNamespace,
-            string generatedNameTypeParameterSuffix,
-            string languageName)
-        {
-            return GetExtractInterfaceOptionsAsync(
-                syntaxFactsService,
-                notificationService,
-                extractableMembers,
-                defaultInterfaceName,
-                allTypeNames,
-                defaultInterfaceName,
-                generatedNameTypeParameterSuffix,
-                languageName).Result;
-        }
-
         public Task<ExtractInterfaceOptionsResult> GetExtractInterfaceOptionsAsync(
             ISyntaxFactsService syntaxFactsService,
             INotificationService notificationService,
@@ -70,19 +49,20 @@ namespace RoslynPad.Roslyn.LanguageServices.ExtractInterface
                     isCancelled: false,
                     includedMembers: viewModel.MemberContainers.Where(c => c.IsChecked).Select(c => c.MemberSymbol).AsImmutable(),
                     interfaceName: viewModel.InterfaceName.Trim(),
-                    fileName: viewModel.FileName.Trim())
+                    fileName: viewModel.FileName.Trim(),
+                    location: GetLocation(viewModel.Destination))
                 : ExtractInterfaceOptionsResult.Cancelled;
             return Task.FromResult(options);
         }
 
-        //private static ExtractInterfaceOptionsResult.ExtractLocation GetLocation(InterfaceDestination destination)
-        //{
-        //    switch (destination)
-        //    {
-        //        case InterfaceDestination.CurrentFile: return ExtractInterfaceOptionsResult.ExtractLocation.SameFile;
-        //        case InterfaceDestination.NewFile: return ExtractInterfaceOptionsResult.ExtractLocation.NewFile;
-        //        default: throw new InvalidOperationException();
-        //    }
-        //}
+        private static ExtractInterfaceOptionsResult.ExtractLocation GetLocation(InterfaceDestination destination)
+        {
+            switch (destination)
+            {
+                case InterfaceDestination.CurrentFile: return ExtractInterfaceOptionsResult.ExtractLocation.SameFile;
+                case InterfaceDestination.NewFile: return ExtractInterfaceOptionsResult.ExtractLocation.NewFile;
+                default: throw new InvalidOperationException();
+            }
+        }
     }
 }

@@ -33,6 +33,7 @@ namespace RoslynPad.Roslyn.Completion.Providers
         private CompletionItem CreateNuGetRoot()
             => CommonCompletionItem.Create(
                 displayText: NuGetPrefix,
+                displayTextSuffix: "",
                 rules: s_rules,
                 glyph: Microsoft.CodeAnalysis.Glyph.NuGet,
                 sortText: "");
@@ -40,11 +41,13 @@ namespace RoslynPad.Roslyn.Completion.Providers
         protected override Task ProvideCompletionsAsync(CompletionContext context, string pathThroughLastSlash)
         {
             if (_nuGetCompletionProvider != null &&
-                pathThroughLastSlash.StartsWith(NuGetPrefix, StringComparison.InvariantCultureIgnoreCase)) {
+                pathThroughLastSlash.StartsWith(NuGetPrefix, StringComparison.InvariantCultureIgnoreCase))
+            {
                 return ProvideNuGetCompletionsAsync(context, pathThroughLastSlash);
             }
 
-            if (string.IsNullOrEmpty(pathThroughLastSlash)) {
+            if (string.IsNullOrEmpty(pathThroughLastSlash))
+            {
                 context.AddItem(CreateNuGetRoot());
             }
 
@@ -56,26 +59,32 @@ namespace RoslynPad.Roslyn.Completion.Providers
             var (id, version) = ParseNuGetReference(packageIdAndVersion);
             var packages = await Task.Run(() => _nuGetCompletionProvider.SearchPackagesAsync(id, exactMatch: version != null, context.CancellationToken), context.CancellationToken).ConfigureAwait(false);
 
-            if (version != null) {
-                if (packages.Count > 0) {
+            if (version != null)
+            {
+                if (packages.Count > 0)
+                {
                     var package = packages[0];
                     var versions = package.Versions;
-                    if (!string.IsNullOrWhiteSpace(version)) {
+                    if (!string.IsNullOrWhiteSpace(version))
+                    {
                         versions = versions.Where(v => v.StartsWith(version, StringComparison.InvariantCultureIgnoreCase));
                     }
 
                     context.AddItems(versions.Select((v, i) =>
                         CommonCompletionItem.Create(
                             v,
+                            "",
                             s_rules,
                             Microsoft.CodeAnalysis.Glyph.NuGet,
                             sortText: i.ToString("0000"))));
                 }
             }
-            else {
+            else
+            {
                 context.AddItems(packages.Select((p, i) =>
                     CommonCompletionItem.Create(
                         NuGetPrefix + p.Id + "/",
+                         "",
                         s_rules,
                         Microsoft.CodeAnalysis.Glyph.NuGet,
                         sortText: i.ToString("0000"))));
@@ -88,11 +97,13 @@ namespace RoslynPad.Roslyn.Completion.Providers
             string version;
 
             var indexOfSlash = value.IndexOf('/');
-            if (indexOfSlash >= 0) {
+            if (indexOfSlash >= 0)
+            {
                 id = value.Substring(NuGetPrefix.Length, indexOfSlash - NuGetPrefix.Length);
                 version = indexOfSlash != value.Length - 1 ? value.Substring(indexOfSlash + 1) : string.Empty;
             }
-            else {
+            else
+            {
                 id = value.Substring(NuGetPrefix.Length);
                 version = null;
             }
