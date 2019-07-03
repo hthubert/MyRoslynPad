@@ -31,7 +31,10 @@ namespace RoslynPad.Hosting
     {
         private static string _scriptRunnerName = "ScriptRunner.exe";
 
-        private static readonly CSharpParseOptions _parseOptions = new CSharpParseOptions(preprocessorSymbols: new[] { "__DEMO__", "__DEMO_EXPERIMENTAL__" }, languageVersion: LanguageVersion.Latest, kind: SourceCodeKind.Script);
+        private static readonly CSharpParseOptions _parseOptions = new CSharpParseOptions(
+            preprocessorSymbols: new[] { "__DEMO__", "__DEMO_EXPERIMENTAL__" }, 
+            languageVersion: LanguageVersion.Latest, 
+            kind: SourceCodeKind.Script);
 
         //private static readonly SyntaxTree InitHostSyntax = ParseSyntaxTree(
         //    @"RoslynPad.Runtime.RuntimeInitializer.Initialize();", _parseOptions);
