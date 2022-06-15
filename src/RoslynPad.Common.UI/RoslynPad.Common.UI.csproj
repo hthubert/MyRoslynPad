@@ -15,7 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.10.0" />
-    <PackageReference Include="NuGet.Commands" Version="5.1.0" />
+    <PackageReference Include="NuGet.Commands" Version="5.2.1+311b325795f23b3c718473671d3432cdbcf9deff" />
     <PackageReference Include="NuGet.PackageManagement.NetStandard" Version="4.9.2" />
     <PackageReference Include="NuGet.ProjectModel" Version="5.1.0" />
     <PackageReference Include="NuGet.Resolver" Version="5.1.0" />
